@@ -1,144 +1,113 @@
-
 #include <iostream>
 #include <vector>
-#include <stack>
+#include <queue>
+#include <list>
+#include <climits>
 #include <string>
-#include <sstream>
 #include <fstream>
 
 #include "../include/graph.h"
 
 using namespace std;
 
-class Graph
+// A estrutura em si está definida na header file (/include/graph.h)
+// Aqui suas funcoes serao definidas
+
+// Construtor
+Graph::Graph(int V)
 {
-    vector<vector<int>> adjMatrix;
-    int edgesCount;
+    this->V = V;
+    adj.resize(V);
+}
 
-public:
-    Graph(int vectorCount, int edges)
+void Graph::addEdge(int u, int v, int w)
+{
+    u -= 1;
+    v -= 1;
+
+    adj[u].push_back(make_pair(v, w));
+    adj[v].push_back(make_pair(u, w));
+}
+
+void Graph::prim(int initialVert, int solution, string outputPath)
+{
+    ofstream outfile(outputPath);
+
+    vector<bool> inMST(V, false);
+    vector<int> key(V, INT_MAX);
+    vector<int> parent(V, -1);
+
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
+
+    key[initialVert] = 0;
+    pq.push(make_pair(0, initialVert));
+
+    while (!pq.empty())
     {
-        adjMatrix = vector<vector<int>>(vectorCount, vector<int>(vectorCount, -1));
-        edgesCount = edges;
-    }
+        int u = pq.top().second;
+        pq.pop();
 
-    void addEdge(int a, int b, int weight)
-    {
-        adjMatrix[a][b] = weight;
-        adjMatrix[b][a] = weight;
-    }
+        if (inMST[u])
+            continue;
 
-    void printAgm()
-    {
-        int iterator = 0, currVector = 0;
-        vector<vector<int>> agm = vector<vector<int>>(edgesCount, vector<int>(3, 0));
+        inMST[u] = true;
 
-        // Encontrar o menor peso
-        while (true)
+        for (auto it = adj[u].begin(); it != adj[u].end(); ++it)
         {
-            int weight = -1, to = -1;
+            int v = it->first;
+            int weight = it->second;
 
-            for (int i = 0; i < adjMatrix.size(); i++)
+            if (!inMST[v] && key[v] > weight)
             {
-                if ((weight == -1 || weight > adjMatrix[currVector][i]) && adjMatrix[currVector][i] != -1)
-                {
-                    weight = adjMatrix[currVector][i];
-                    to = i;
-                }
-            }
-
-            if (weight == -1)
-            {
-                break;
-            }
-
-            agm[iterator][0] = currVector;
-            agm[iterator][1] = to;
-
-            // Impede que o vertice seja indicado 2 vezes
-            for (int i = 0; i < adjMatrix.size(); i++)
-            {
-                adjMatrix[currVector][i] = -1;
-                adjMatrix[i][currVector] = -1;
-            }
-
-            currVector = to;
-            iterator++;
-        }
-
-        // Printar AGM
-        for (int i = 0; i < iterator; i++)
-        {
-            printf("(%i, %i)", agm[i][0] + 1, agm[i][1] + 1);
-
-            if (i != iterator)
-            {
-                printf(" ");
+                key[v] = weight;
+                parent[v] = u;
+                pq.push(make_pair(key[v], v));
             }
         }
     }
-};
 
-void solution(string inputPath, string outputPath, int initialVert)
-{
-    printf("Solucionando");
+    // Calcula o custo total da AGM
+    int totalWeight = 0;
 
-    ifstream inputFile(inputPath);
-
-    // Neste caso, os inputs serao lidos a partir deste arquivo
-    if (inputFile.is_open())
+    for (int i = 1; i < V; ++i)
     {
-        string line;
+        totalWeight += key[i];
+        mstEdges.push_back(make_pair(parent[i], i));
+    }
 
-        int verts, edges;
+    // Caso o usuario nao queira a solucao, printamos apenas o custo total
+    if (!solution && outfile.is_open())
+    {
+        outfile << totalWeight << endl;
+        outfile.close();
+    }
+    else if (!solution)
+    {
+        printf("%i\n", totalWeight);
+    }
 
-        if (getline(inputFile, line))
+    if (!solution)
+        return;
+
+    // No caso da solucao, exibidos as arestas da AGM
+    for (auto edge : mstEdges)
+    {
+        if (outfile.is_open())
         {
-            stringstream ss(line);
-
-            if (ss >> verts >> edges)
-            {
-            }
-            else
-            {
-                cout << "Erro ao ler numeros do arquivo\n" << line << endl;
-                return;
-            }
+            outfile << "(" << edge.first + 1 << ", " << edge.second + 1 << ") ";
         }
         else
         {
-            cout << "Falha ao informar entradas corretamente\n";
-            return;
+            cout << "(" << edge.first + 1 << ", " << edge.second + 1 << ") ";
         }
-
-        for (int i = 0; i < edges; i++)
-        {
-            if (!getline(inputFile, line))
-            {
-                cout << "Faltam linhas no input\n";
-                return;
-            }
-
-            stringstream ss(line);
-            int from, to, weight;
-
-            ss >> from >> to >> weight;
-
-            printf("From: %i, To: %i, Weight: %i\n", from, to, weight);
-            // graph.addEdge(from - 1, to - 1);
-        }
-
-        // graph.print(outputPath);
-
-        inputFile.close();
     }
-    else if (inputPath.empty())
+
+    if (!outfile.is_open())
     {
-        // printf("Digite os inputs pelo terminal (A formatacao pode ser encontrada no helper)\n");
-        // Fazer depois...
-    } else {
-        printf("Falha ao abrir arquivo informado, verifique se o caminho esta correto\n");
+        cout << endl;
+        return;
     }
 
-    printf("Its over\n");
+    outfile << endl;
+    outfile.close();
 }
